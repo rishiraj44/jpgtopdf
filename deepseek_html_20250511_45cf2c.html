@@ -1,0 +1,198 @@
+<style>
+    .converter-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+    }
+
+    .upload-section {
+        border: 2px dashed #ccc;
+        border-radius: 10px;
+        padding: 2rem;
+        text-align: center;
+        margin: 20px 0;
+        transition: all 0.3s;
+    }
+
+    .upload-section:hover,
+    .upload-section.dragover {
+        border-color: #007bff;
+        background-color: #f8f9fa;
+    }
+
+    .upload-button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 10px;
+    }
+
+    .cloud-services {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin: 20px 0;
+    }
+
+    .cloud-btn {
+        padding: 10px 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .file-list {
+        margin: 20px 0;
+        border: 1px solid #eee;
+        padding: 10px;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .remove-btn {
+        color: #dc3545;
+        cursor: pointer;
+    }
+
+    #convertBtn {
+        background: #28a745;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+</style>
+
+<div class="converter-container">
+    <h1>Convert JPG to PDF</h1>
+    <div class="upload-section" id="dropZone">
+        <div class="upload-icon">📁</div>
+        <h3>Drag and drop JPG files here</h3>
+        <p>or</p>
+        <button class="upload-button" onclick="document.getElementById('fileInput').click()">
+            Select Files
+        </button>
+        <input type="file" id="fileInput" hidden accept="image/jpeg" multiple>
+    </div>
+
+    <div class="cloud-services">
+        <div class="cloud-btn" onclick="alert('Dropbox integration coming soon')">
+            <i class="fas fa-dropbox"></i> Dropbox
+        </div>
+        <div class="cloud-btn" onclick="alert('Google Drive integration coming soon')">
+            <i class="fas fa-google-drive"></i> Google Drive
+        </div>
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <button id="convertBtn" onclick="convertToPDF()">
+        Convert to PDF
+    </button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    let files = [];
+
+    // Handle drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    // Handle file input
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    function handleFiles(newFiles) {
+        const validFiles = Array.from(newFiles).filter(file => 
+            file.type === 'image/jpeg'
+        );
+        
+        if(validFiles.length === 0) {
+            alert('Please upload only JPG files');
+            return;
+        }
+
+        files = [...files, ...validFiles];
+        updateFileList();
+    }
+
+    function updateFileList() {
+        fileList.innerHTML = files.map((file, index) => `
+            <div class="file-item">
+                <span>${file.name}</span>
+                <span class="remove-btn" onclick="removeFile(${index})">✕</span>
+            </div>
+        `).join('');
+    }
+
+    window.removeFile = (index) => {
+        files.splice(index, 1);
+        updateFileList();
+    };
+});
+
+async function convertToPDF() {
+    if(files.length === 0) {
+        alert('Please add some JPG files first');
+        return;
+    }
+
+    const pdf = new jspdf.jsPDF();
+    
+    for(let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const img = await readFileAsImage(file);
+        
+        const imgWidth = pdf.internal.pageSize.getWidth();
+        const imgHeight = (img.height * imgWidth) / img.width;
+        
+        pdf.addImage(img, 'JPEG', 0, 0, imgWidth, imgHeight);
+        if(i < files.length - 1) pdf.addPage();
+    }
+
+    pdf.save('converted.pdf');
+}
+
+function readFileAsImage(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => resolve(img);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+</script>
